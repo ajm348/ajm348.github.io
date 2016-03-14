@@ -1,0 +1,685 @@
+<html>
+<head>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+	<!-- From https://github.com/ThisIsDallas/Simple-Grid -->
+	<link href='simplegrid.css' rel='stylesheet' type='text/css'>
+<!-- Load the d3 library. -->
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<style>
+/*background image */
+body { font-family: "Open Sans"; 
+		background-image: url('background4.jpg');
+		background-repeat: no-repeat;
+		background-attachment: fixed; 
+		background-size: 130%;} 
+
+.link {
+  stroke: #aaa;
+}
+
+p {padding: 10px;}
+
+div {padding: 5px;}
+
+svg { background-color: rgba(238,238,238,.8); padding: 10px; }
+.axis path { fill: none; stroke: #aaa;}
+.axis line { stroke: #aaa; }
+.axis text { fill: "black"; font-size: .7em; }
+
+</style>
+</head>
+<body>
+<div class="grid">
+	<div class="col-2-3">
+	<h1><center>Fantasy Cross Country Skiing</center></h1>
+	<h3><center>Adam Mahar, David Ndereba, Hannah Ajmani</center></h3>
+	</div>
+	<div class="col-1-3">
+		<img src="NHLogo2.gif" alt="Logo" style="width:40%">
+	</div>
+
+	<div class="col-1-1">
+
+		<br><h3>Introduction</h3>
+		<p>
+
+			<a href="http://www.noahhoffmanfantasyxc.com/">Fantasy Cross Country Skiing</a> is a game in the spirit of all fantasy sports, wherein <b><i>players</i></b> select a certain number of <b><i>athletes</i></b> to their team and are rewarded for their picks with points based on the athletes' performance.
+		</p>
+
+		
+
+	</div>
+	<div class="col-1-1">
+		<h3>Predictability</h3>
+		<p>
+			Cross country skiing is among <a href="http://fasterskier.com/blog/article/is-cross-country-skiing-predictable/">the most predictable of sports</a>; clearly, football isn't nearly as predictable!
+		</p>
+
+		<center><div class="col-1-2" id="xc_predictions"></div>
+		<div class="col-1-2" id="football_predictions"></div></center>
+	</div>
+	<div class="col-1-1">
+		<h3>Results of Predictability</h3>
+		<p>
+			As a result of the predictability of cross country skiing, lots of players pick the same athletes, as shown in the graph on the left; however, when they can't pick the normal favorite athletes, picks tend wildly toward randomness and no obvious center emerges, as on the right.
+		</p>
+
+	</div>
+	<div class="col-1-1" id="force_directed_key"></div>
+	<div class="col-1-2" id="tour_de_ski_graph"></div>
+	<div class="col-1-2" id="post_tour_graph"></div>
+	<div class="col-1-1">
+		<h3>Nationality Bias</h3>
+		<p>
+			Given that players are generally very good at the game and select the same athletes, does the nationality of an athlete and the nationality of a player factor into which players select which athlete?
+		</p>
+
+		<div class="col-1-2" id="ath3425301"></div>
+		<div class="col-1-2" id="ath3420228"></div>
+		<div class="col-1-3" id="ath3535410"></div>
+		<div class="col-1-3" id="ath3535304"></div>
+		<div class="col-1-3" id="ath3535320"></div>
+		<div class="col-1-3" id="ath3530005"></div>
+		<div class="col-1-3" id="ath3530120"></div>
+		<div class="col-1-3" id="ath3530489"></div>
+		<div class="col-1-3" id="ath3100110"></div>
+		<div class="col-1-3" id="ath3100006"></div>
+		<div class="col-1-3" id="ath3105095"></div>
+		<div class="col-1-3" id="ath3515184"></div>
+		<div class="col-1-3" id="ath3185137"></div>
+		<div class="col-1-3" id="ath3190255"></div>
+	</div>
+</div>
+
+<script>
+
+//Code for "Fantasy Cross Country" graph
+
+d3.json("shift_in_teams_over_time.json", function(error, athletes) {
+	
+	// ANY time we do I/O we should check for errors.
+	if (error) { console.log(error); }
+
+	var padding = 40;
+
+	//Graph of total points vs week 1 teams
+
+	var add_total_points_v_week = function (x_column) {
+
+		//set up graph, axes, and scales
+
+		var div = d3.select("#xc_predictions");
+		var width = parseFloat(div.style("width"))-10;
+		var height = parseFloat(div.style("width"))*(5/6);
+		var xScale = d3.scale.linear().domain([1500,-1]).range([width-30,padding]);
+		var yScale = d3.scale.linear().domain([-1,2500]).range([height-padding, 0]);
+		var xAxis = d3.svg.axis().scale(xScale).orient("bottom")
+		.ticks(4);
+		var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(4);
+
+		var svg = div.append("svg")
+    	.attr("width", width)
+    	.attr("height", height + 20);
+
+		svg.append("g").attr("transform", "translate(0," + (height - padding) + ")").attr("class", "axis")
+		.call(xAxis);
+		svg.append("g").attr("transform", "translate(" + padding + ",0)").attr("class", "axis")
+		.call(yAxis);
+
+		var g = svg.append("g");
+		var xs = [];
+		var ys = [];
+
+		//Floating the total points per athlete against the number of teams with that athlete
+
+		athletes.forEach(function (athlete) {
+			g.append("circle").attr("cx",xScale(athlete[x_column]))
+			.attr("cy",yScale(athlete["Total Points"]))
+			.attr("r","2")
+			.attr("fill","blue");
+			xs.push(athlete[x_column]);
+			ys.push(athlete["Total Points"]);
+		});
+
+		//Axes labels and chart title
+
+		svg.append("text")
+		.attr("transform", "rotate(0)")
+		.attr("x", 300)
+		.attr("y", height - 5)
+		.style("font-size", 11)
+		.style("text-anchor", "end")
+		.text("Number of Teams with Athlete");
+
+		svg.append("text")
+		.attr("transform", "rotate(-90)")
+		.attr("y", 0)
+		.attr("x", -50)
+		.style("font-size", 11)
+		.style("text-anchor", "end")
+		.text("Total Points In Season");
+
+		svg.append("text")
+		.attr("x", (width/2))
+		.attr("y", 18)
+		.attr("text-anchor", "middle")
+		.text("Fantasy Cross Country Skiing")
+
+		//Least squares line
+		var n = xs.length;
+		var sum_xs = 0, sum_ys = 0, sum_xys = 0, sum_xxs = 0;
+		for (var i = 0; i < n; i++) {
+			sum_xs += xs[i];
+			sum_ys += ys[i];
+			sum_xys += (xs[i]*ys[i]);
+			sum_xxs += (xs[i]*xs[i]);
+		}
+		//Slope(b) = (NΣXY - (ΣX)(ΣY)) / (NΣX2 - (ΣX)2)
+		var m = (n*sum_xys - (sum_xs*sum_ys))/(n*sum_xxs - sum_xs*sum_xs);
+		//Intercept(a) = (ΣY - b(ΣX)) / N 
+		var b = (sum_ys - m*sum_xs)/n;
+
+		svg.append("line")
+		.attr("x1", xScale(0))
+		.attr("y1", yScale(b))
+		.attr("x2", xScale(1500))
+		.attr("y2", yScale(1500*m+b))
+		.attr("stroke", "blue")
+		.attr("stroke-width", 1);
+
+        
+	};
+
+	add_total_points_v_week("Week 1 Teams");
+
+});
+
+//Code for "Fantasy Football" graph
+
+d3.json("fantasyFootball.json", function(error, data) {
+
+	padding = 30;
+
+	//Check for errors
+
+    if (error) { console.log(error); }
+    completeData = data;
+
+    //Set up graph dimensions
+
+    var margin = {top: 50, right: 150, bottom: 50, left: 50};
+    var div = d3.select("#football_predictions");
+	var width = parseFloat(div.style("width")) - margin.right - margin.left-10;
+	var height = (parseFloat(div.style("width")) - margin.top - margin.bottom)*5/6;
+
+	// Add an SVG element with the desired dimensions and margin.
+	
+	var graph = div.append("svg:svg")
+	      .attr("width", width + margin.left + margin.right)
+	      .attr("height", height + margin.top + margin.bottom)
+	      .append("svg:g")
+	      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+	var xScale = d3.scale.linear().domain([1,102]).range([width + 70, padding - 30]); 
+	var yScale = d3.scale.linear().domain([0,450]).range([height-padding + 30, -30]); 
+
+
+	//Add some color
+	var trueColors = ["#0B0B61", "#38610B", "#9AFE2E", "#58FAF4", "#5882FA", 
+	"#D358F7", "#FA5882", "#B40431", "#FF8000", "#F7FE2E"];
+
+	var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(5)
+	.tickFormat(d3.format("s"));
+	var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10).
+	tickFormat(d3.format("s"));
+
+	graph.append("svg:g").attr("class", "x axis").attr("transform", "translate(0," + height + ")")
+	.call(xAxis)
+	.selectAll("text")  
+	.attr("transform", "rotate(0)" );
+
+	//Float athlete total season points against average draft pick
+
+	for (var i=0; i<100; i++){
+	    thisLength = data.Points[i];
+	    graph.append("circle").attr("cx",xScale(i)+5)
+	    .attr("cy",yScale(thisLength)-20)
+	    .attr("r", 2)
+	    .attr("fill","red");
+	}
+
+	//Axes labels and chart title
+
+	graph.append("text")
+	.attr("transform", "rotate(0)")
+	.attr("x", 300)
+	.attr("y", height+margin.bottom - 15)
+	.style("font-size", 11)
+	.style("text-anchor", "end")
+	.text("Athletes by Draft Order");
+
+	graph.append("svg:g").attr("class", "y axis").attr("transform", "translate(0)")
+	.call(yAxis).append("text")
+	.attr("transform", "rotate(-90)")
+	.attr("y", -35)
+	.style("text-anchor", "end")
+	.text("Total Points In Season");
+
+	graph.append("text")
+		.attr("x", (width / 2) + 50)
+		.attr("y", 0 - (margin.top / 2 ) - 8)
+		.attr("text-anchor", "middle")
+		.text("Fantasy Football")	    
+    
+    
+});
+
+
+//Code for "Weekend 5" and "Weekend 6" graphs
+
+//Check for errors in JSON data
+
+d3.json("user_teams_shortened.json", function (error, users_original) {
+	if (error) { console.log(error); };
+
+d3.json("athletes.json", function (error1, athletes) {
+	if (error1) { console.log(error1); };
+
+d3.json("user_athletes_dict.json", function (error2, users_athletes) {
+	if (error2) { console.log(error2); };
+
+	//Color athletes vs. players
+
+	var athlete_color = "#29526D";
+	var user_color = "#AA7839";
+
+	//Create graph connecting players to athletes
+
+	var make_force_graph = function (week,id,max_score) {
+		var div = d3.select("#"+id);
+		var width = parseFloat(div.style("width"));
+		var height = parseFloat(div.style("width"));
+		var svg = div.append("svg")
+		.attr("width", width-10)
+		.attr("height", height-10);
+		var force = d3.layout.force()
+		.gravity(.45)
+		.distance(130)
+		.charge(-100)
+		.linkStrength(.1)
+		.size([width, height]);
+			//Reference materials: http://bl.ocks.org/jose187/4733747
+			//and http://bl.ocks.org/mbostock/1667139
+
+
+		//Loading message
+
+		var loading = svg.append("text")
+		.attr("x", width / 2)
+		.attr("y", height / 2)
+		.attr("dy", ".35em")
+		.style("text-anchor", "middle")
+		.text("Simulating. One moment please...");
+
+		setTimeout(function() {
+
+			//Filter users to only include those from selected weekend
+			var users = users_original.filter(function (user) {
+				return user["weekend"] == week; 
+			});
+
+			//Link each player to every athlete on their team roster
+
+			var links = [];
+			var which_user = 654;
+			users.forEach(function (user) {
+				for (var i = 1; i <= 16; i++) {
+					var athlete = user["Athlete "+i];
+					if ( athlete != null ) {
+						var elem = {"source":which_user,"target":users_athletes[athlete],"weight":1};
+						links.push(elem);
+					};
+				};
+				which_user++;
+			});
+			force
+			  .nodes(athletes.concat(users))
+			  .links(links);
+
+			//Gray lines between players and athletes  
+
+			var link = svg.selectAll(".link")
+			  .data(links)
+			.enter().append("line")
+			  .attr("class", "link")
+			.style("stroke-width", .3);
+
+			//Dots for athletes and players
+
+			var node = svg.selectAll(".node")
+			 	.data(athletes.concat(users))
+				.enter().append("g")
+			 	.attr("class", "node");
+
+			//Scale athlete points by max points in weekend
+
+			var max_athlete_score = 0;
+			athletes.forEach(function (athlete) {
+				if (athlete["weekend "+week] > max_athlete_score) max_athlete_score = athlete["weekend "+week];
+			});
+
+			//Adding all nodes to the graph, scaling them by their points & 
+			//coloring based on player or athlete
+
+			node.append("circle")
+			.attr("r",function(node) {if (node["user_id"] == undefined) {
+			 	return ((node[("weekend " + week)]/max_athlete_score*6+2));
+			}
+				else {
+			  	return (((node[("overall points")]/max_score)*node[("overall points")]/max_score)+2);
+			  };
+			  })
+			  .style("fill",function(node) {if (node["user_id"] == undefined) {
+			  	return athlete_color;
+			  }
+			  else {
+			  	return user_color;
+			  };
+
+			});
+
+			//Link connected nodes, adjust their position based on each other
+
+			force.on("tick", function() {
+			link.attr("x1", function(d) { return d.source.x; })
+			    .attr("y1", function(d) { return d.source.y; })
+			    .attr("x2", function(d) { return d.target.x; })
+			    .attr("y2", function(d) { return d.target.y; });
+
+			node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+				});
+
+			//Run for 40 cycles (effectively making it a static image after 40 cycles)
+
+			force.start();
+			for (var i = 40; i > 0; --i) force.tick();
+			force.stop();
+			loading.remove();
+
+			//Chart titles
+
+			svg.append("rect")
+			.attr("x", width/2-50)
+			.attr("y", -10)
+			.attr("height",30)
+			.attr("width",100)
+			.attr("fill", "rgba(238,238,238,.5)");
+
+			svg.append("text")
+			.attr("x", width/2)
+			.attr("y", height-(height-10))
+			.attr("text-anchor","middle")
+			.style("font-size", 15)
+			.style("font-weight","bold")
+			.text("Weekend "+week);
+
+  		}, 10); //wait 10 miilliseconds to execute code, letting the rest of the page load
+
+		
+	};
+
+	//Force graph key
+
+	var make_key = function (id) {
+		var div = d3.select("#"+id);
+		var width = parseFloat(div.style("width"));
+		var height = 50;
+		var svg = div.append("svg")
+		.attr("width", width)
+		.attr("height", height);
+
+
+		svg.append("text")
+		.attr("x", width-(width-100))
+		.attr("y", (height-20))
+		.style("font-size", 11)
+		.style("text-anchor", "end")
+		.text("Athlete");
+
+		svg.append("circle")
+		.attr("cx", width-(width-150))
+		.attr("cy", height-(height-25))
+		.attr("r",7)
+		.style("fill", athlete_color);
+
+		svg.append("text")
+		.attr("x", width-(width-100))
+		.attr("y", height-(height-10))
+		.style("font-size", 11)
+		.style("text-anchor", "end")
+		.text("Player");
+
+		svg.append("circle")
+		.attr("cx", width-(width-150))
+		.attr("cy", height-(height-5))
+		.attr("r",7)
+		.style("fill", user_color);
+
+		svg.append("text")
+		.attr("x", width-(width-200))
+		.attr("y", height-(height-10))
+		.style("font-size", 11)
+		.text("Lines connect players to the athletes they have picked and exert a gravitational force between the two.");
+
+		svg.append("text")
+		.attr("x", width-(width-200))
+		.attr("y", height-(height-25))
+		.style("font-size", 11)
+		.text("Circle diameters correspond to the number of points scored by the player or the athlete. They are scaled differently for players and athletes.");
+
+	}
+	make_key("force_directed_key");
+	make_force_graph(5,"tour_de_ski_graph",6607);
+	make_force_graph(6,"post_tour_graph",15534);
+
+});
+});
+});
+
+
+d3.json("user_teams.json", function (error, users_original) {
+	if (error) { console.log(error); };
+
+	var athlete_player_holders_nationalities = function(athlete_id) {
+		var div = d3.select("#ath"+athlete_id);
+
+        //Create the dimensions
+
+	    var margin = {top: 50, right: 150, bottom: 50, left: 50};
+	    var width = parseFloat(div.style("width")) - margin.right - margin.left-4;
+		var height = (parseFloat(div.style("width")) - margin.top - margin.bottom)/2;
+
+		// Add an SVG element with the desired dimensions and margin.
+
+		var graph = div.append("svg:svg")
+		      .attr("width", width + margin.left + margin.right)
+		      .attr("height", height + margin.top + margin.bottom)
+		      .append("svg:g")
+		      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+		var xScale = d3.scale.ordinal().domain([1,2,3,4,5,6,7,8,9,10]).rangeRoundBands([0, width], .05); 
+		var yScale = d3.scale.linear().domain([0,1]).range([height, 0]); 
+
+		//Add some color
+
+		var trueColors = ["#0B0B61", "#38610B", "#9AFE2E", "#58FAF4", "#5882FA", 
+		"#D358F7", "#B40431", "#FF8000", "#F7FE2E"];
+
+		var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(10)
+		.tickFormat(d3.format("s"));
+		var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(10).
+		tickFormat(d3.format(".0%"));
+
+		//Axes labels
+
+		graph.append("svg:g")
+		.attr("class", "x axis")
+		.attr("transform", "translate(0," + height + ")")
+		.call(xAxis).append("text")
+		.attr("x", width/2)
+		.attr("y", 35)
+		.style("text-anchor", "end")
+		.text("Weeks");
+
+		graph.append("svg:g")
+		.attr("class", "y axis")
+		.attr("transform", "translate(0)")
+		.call(yAxis).append("text")
+		.attr("transform", "rotate(-90)")
+		.attr("y", -35)
+		.style("text-anchor", "end")
+		.text("% Selecting Players From Country");
+
+		//Add data to chart
+		
+		var results = {};
+		users_original.forEach(function(user) {
+
+			//Loop through every user who has defined their nationality
+
+			if (user["user_country"] != " null ") {
+				for (var i=1; i<17; i++) {
+					if (athlete_id == user["Athlete "+i]) {
+						var weekend = user["weekend"];
+						var country = user["user_country"];
+
+						//Tally total users from each nationality per athlete
+
+						if (results[weekend] == undefined) {
+							results[weekend] = {" USA " : 0, " CAN " : 0, " SWE " : 0, " NOR " : 0, " FIN " : 0, " POL " : 0};
+							results[weekend][country] = 1;
+							results[weekend]["total"] = 1;
+						}
+						else {
+							results[weekend]["total"] += 1;
+							if (results[weekend][country] == undefined) {
+								results[weekend][country] = 1;
+							}
+							else {
+								results[weekend][country] += 1;
+							}
+						}
+						break;
+					}
+				}
+			}
+		});
+	    for (var i=1; i<11; i++){
+
+	    	//Add data to graph in specified order 
+
+	    	var lookup_order = {" USA " : 1, " CAN " : 2, " SWE " : 3, " NOR " : 4, " FIN " : 5, " POL " : 6, "other" : 7}
+
+	    	if (results[i] != undefined) {
+		    	var weekend_countries = Object.keys(results[i]).sort(function(a, b) {
+		    		if (lookup_order[a] == undefined) {
+		    			return 1;
+		    		}
+		    		else if (lookup_order[b] == undefined) {
+		    			return -1;
+		    		}
+		    		else {
+		    			return (lookup_order[a] - lookup_order[b])
+		    		}
+		    	});
+		        var len = 0;
+		        var other = 0;
+		        for (var j=0; j<6; j++) {
+		            var thisLength = len + (results[i][weekend_countries[j]]/results[i]["total"]);
+		            
+		            len = len + (results[i][weekend_countries[j]]/results[i]["total"]);
+		            
+		            //Add rectangles so that the height is dependent on the percentage of users from each country
+
+		            graph.append("rect")
+		            .attr("x",xScale(i))
+		            .attr("y",yScale(thisLength))
+		            .attr("fill", trueColors[j])
+		            .attr("width", width/15)
+		            .attr("height", height-yScale(results[i][weekend_countries[j]]/results[i]["total"]));
+		        }
+
+		        //Total "other" countries
+
+		        for (var j=6; j<weekend_countries.length; j++) {
+		        	if (weekend_countries[j] != "total") {
+		        		other += (results[i][weekend_countries[j]]/results[i]["total"]);
+		        	}
+		        }
+
+		        //Add the "other" bar
+
+		        graph.append("rect")
+		        .attr("x",xScale(i))
+		        .attr("y",yScale(len+other))
+		        .attr("fill", trueColors[6])
+		        .attr("width", width/15)
+		        .attr("height", height-yScale(other));
+	        }
+	    }
+
+		// Labels for the different colors 
+
+		var lookup_list = [" USA "," CAN "," SWE "," NOR "," FIN "," POL ","other"]
+
+		//Legend
+
+		for (var k=0;k<7; k++){
+
+		    graph.append("rect")
+		    .attr("x", width-5)
+		    .attr("y", 5+(20*(6-k)))
+		    .attr("width", 5)
+		    .attr("height", 5)
+		    .attr("fill", trueColors[k]);
+
+		    graph.append("text")
+		    .attr("x", width+3)
+		    .attr("y",12+(20*(6-k)))
+		    .text(lookup_list[k])
+		    .attr("font-size", 12);
+		}
+
+		//Add athlete names and countries
+
+		d3.json("athletes_dict.json", function (error3, athletes_dict) {
+			if (error3) { console.log(error3); };
+			
+			graph.append("text")
+			.attr("x", width-(width/2))
+			.attr("y", -5)
+			.style("font-size", 11)
+			.text(athletes_dict[athlete_id]["athlete_name"]+" ("+athletes_dict[athlete_id]["athlete_country"]+")");
+		});
+	    
+	};
+	athlete_player_holders_nationalities(3425301); //Johaug (NOR)
+	athlete_player_holders_nationalities(3420228); //Sundby (NOR)
+	athlete_player_holders_nationalities(3535410); //Diggins (USA)
+	athlete_player_holders_nationalities(3535304); //Caldwell (USA)
+	athlete_player_holders_nationalities(3535320); //Bjornsen (USA)
+	athlete_player_holders_nationalities(3530005); //Newell (USA)
+	athlete_player_holders_nationalities(3530120); //Hamilton (USA)
+	athlete_player_holders_nationalities(3530489); //Hoffman (USA)
+	athlete_player_holders_nationalities(3100110); //Harvey (CAN)
+	athlete_player_holders_nationalities(3100006); //Kershaw (CAN)
+	athlete_player_holders_nationalities(3105095); //Nishikawa (CAN)
+	athlete_player_holders_nationalities(3515184); //Von Siebenthal (SUI)
+	athlete_player_holders_nationalities(3185137); //Kylloenen (FIN)
+	athlete_player_holders_nationalities(3190255); //Gros (FRA)
+});
+
+</script>
+
+</body>
+</html>
